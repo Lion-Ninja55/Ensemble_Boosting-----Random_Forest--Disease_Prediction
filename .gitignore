@@ -1,0 +1,8 @@
+node_modules/
+ml/cache/
+catboost_info/
+*.pyc
+__pycache__/
+.env
+.DS_Store
+Thumbs.db

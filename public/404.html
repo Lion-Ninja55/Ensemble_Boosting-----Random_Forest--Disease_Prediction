@@ -1,0 +1,891 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mega Disease AI — Stacked Boosting & Meta-Learner Clinical Prediction</title>
+  <meta name="description" content="Multi-step medical prediction web app using a stacked ensemble of 5 boosting algorithms (XGBoost, LightGBM, CatBoost, GradientBoosting, AdaBoost) and a Random Forest meta-learner trained on 281K patient records.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <!-- Ambient background glow -->
+  <div class="glow-sphere sphere-1"></div>
+  <div class="glow-sphere sphere-2"></div>
+  <div class="glow-sphere sphere-3"></div>
+
+  <!-- Top Navigation Header -->
+  <header class="app-header">
+    <div class="header-container">
+      <div class="brand">
+        <div class="logo-box">
+          <i class="fa-solid fa-heart-pulse logo-icon"></i>
+        </div>
+        <div class="brand-text">
+          <h1>MegaDisease<span>AI</span></h1>
+          <p class="tagline">Stacked Boosting & Meta-Learner Multi-Disease System</p>
+        </div>
+      </div>
+      <div class="header-actions">
+        <div class="badge-dataset">
+          <i class="fa-solid fa-database"></i>
+          <span>281K Patient Dataset</span>
+        </div>
+        <button id="btn-open-diagnostics" class="btn-nav" title="View Accuracy, Confusion Matrix & Overfitting Checks">
+          <i class="fa-solid fa-chart-pie"></i>
+          <span>Model Metrics & Diagnostics</span>
+          <span class="pulse-dot"></span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Application Container -->
+  <main class="main-container">
+    <!-- Presets Bar -->
+    <section class="presets-section" aria-label="Auto-filled Patient Presets">
+      <div class="presets-header">
+        <span class="preset-label"><i class="fa-solid fa-wand-magic-sparkles"></i> Auto-fill Patient Presets:</span>
+      </div>
+      <div class="presets-chips" id="preset-buttons">
+        <button class="preset-btn" data-preset="healthy">
+          <i class="fa-solid fa-circle-check"></i> Healthy Adult (Reference)
+        </button>
+        <button class="preset-btn" data-preset="diabetic_risk">
+          <i class="fa-solid fa-syringe"></i> Diabetic & Glycemic Risk
+        </button>
+        <button class="preset-btn" data-preset="heart_risk">
+          <i class="fa-solid fa-heart-crack"></i> Hypertension & Cardiac Risk
+        </button>
+        <button class="preset-btn" data-preset="metabolic_complex">
+          <i class="fa-solid fa-diagram-project"></i> Metabolic Syndrome Complex
+        </button>
+        <button class="preset-btn" data-preset="renal_hepatic">
+          <i class="fa-solid fa-shield-halved"></i> Renal & Hepatic Alert
+        </button>
+      </div>
+    </section>
+
+    <!-- Slide Step Progress Indicator -->
+    <nav class="step-nav" aria-label="Prediction Steps">
+      <div class="step-progress-bar">
+        <div class="step-progress-fill" id="step-progress-fill"></div>
+      </div>
+      <div class="steps-wrapper">
+        <div class="step-item active" data-step="1" id="step-nav-1">
+          <div class="step-circle">
+            <span class="step-num">1</span>
+            <i class="fa-solid fa-check step-check"></i>
+          </div>
+          <div class="step-info">
+            <span class="step-title">Step 1</span>
+            <span class="step-sub">Demographics & BMI</span>
+          </div>
+        </div>
+
+        <div class="step-connector"></div>
+
+        <div class="step-item" data-step="2" id="step-nav-2">
+          <div class="step-circle">
+            <span class="step-num">2</span>
+            <i class="fa-solid fa-check step-check"></i>
+          </div>
+          <div class="step-info">
+            <span class="step-title">Step 2</span>
+            <span class="step-sub">Vitals & Lab Biomarkers</span>
+          </div>
+        </div>
+
+        <div class="step-connector"></div>
+
+        <div class="step-item" data-step="3" id="step-nav-3">
+          <div class="step-circle">
+            <span class="step-num">3</span>
+            <i class="fa-solid fa-check step-check"></i>
+          </div>
+          <div class="step-info">
+            <span class="step-title">Step 3</span>
+            <span class="step-sub">Lifestyle & History</span>
+          </div>
+        </div>
+
+        <div class="step-connector"></div>
+
+        <div class="step-item" data-step="4" id="step-nav-4">
+          <div class="step-circle">
+            <span class="step-num">4</span>
+            <i class="fa-solid fa-flag-checkered step-check"></i>
+          </div>
+          <div class="step-info">
+            <span class="step-title">Results</span>
+            <span class="step-sub">Predictions & Scores</span>
+          </div>
+        </div>
+      </div>
+    </nav>
+
+    <!-- Slide Container Form -->
+    <form id="patient-form" class="slide-card" novalidate>
+
+      <!-- SLIDE 1: Demographics & Anthropometrics -->
+      <section class="slide-pane active" id="slide-1" data-slide="1">
+        <div class="slide-header">
+          <div class="slide-icon-box"><i class="fa-solid fa-user-doctor"></i></div>
+          <div>
+            <h2>Patient Demographics & Body Metrics</h2>
+            <p>Input basic biometric factors to establish baseline epidemiological calibration.</p>
+          </div>
+        </div>
+
+        <div class="form-grid">
+          <!-- Age -->
+          <div class="form-group">
+            <label for="age">
+              <span>Age (Years)</span>
+              <span class="unit-badge">18 – 100</span>
+            </label>
+            <div class="input-wrap">
+              <i class="fa-solid fa-calendar-days input-icon"></i>
+              <input type="number" id="age" name="age" min="1" max="110" value="45" required placeholder="e.g. 45">
+            </div>
+            <span class="field-hint">Current biological age in years</span>
+          </div>
+
+          <!-- Gender Dropdown -->
+          <div class="form-group">
+            <label for="gender">
+              <span>Biological Gender</span>
+              <span class="unit-badge">Categorical</span>
+            </label>
+            <div class="input-wrap">
+              <i class="fa-solid fa-venus-mars input-icon"></i>
+              <select id="gender" name="gender" required>
+                <option value="Female">Female</option>
+                <option value="Male" selected>Male</option>
+              </select>
+            </div>
+            <span class="field-hint">Used for sex-specific reference ranges</span>
+          </div>
+
+          <!-- BMI Text Field -->
+          <div class="form-group">
+            <label for="bmi">
+              <span>Body Mass Index (BMI)</span>
+              <span class="unit-badge">kg/m²</span>
+            </label>
+            <div class="input-wrap">
+              <i class="fa-solid fa-weight-scale input-icon"></i>
+              <input type="number" step="0.1" id="bmi" name="bmi" min="10" max="80" value="26.5" required placeholder="e.g. 26.5">
+            </div>
+            <div class="bmi-quick-bar">
+              <span id="bmi-status" class="bmi-badge">Overweight (25–29.9)</span>
+              <button type="button" id="btn-calc-bmi" class="text-btn"><i class="fa-solid fa-calculator"></i> Calculate from H/W</button>
+            </div>
+          </div>
+
+          <!-- Education Level Dropdown -->
+          <div class="form-group">
+            <label for="education_level">
+              <span>Education Level</span>
+              <span class="unit-badge">Socioeconomic</span>
+            </label>
+            <div class="input-wrap">
+              <i class="fa-solid fa-graduation-cap input-icon"></i>
+              <select id="education_level" name="education_level">
+                <option value="Primary">Primary Education</option>
+                <option value="Secondary" selected>Secondary / High School</option>
+                <option value="Tertiary">Tertiary / University Degree</option>
+              </select>
+            </div>
+            <span class="field-hint">Correlated with health literacy & dataset cohort</span>
+          </div>
+
+          <!-- Employment Status Dropdown -->
+          <div class="form-group">
+            <label for="employment_status">
+              <span>Employment Status</span>
+              <span class="unit-badge">Demographic</span>
+            </label>
+            <div class="input-wrap">
+              <i class="fa-solid fa-briefcase input-icon"></i>
+              <select id="employment_status" name="employment_status">
+                <option value="Employed" selected>Employed (Active)</option>
+                <option value="Unemployed">Unemployed</option>
+                <option value="Retired">Retired</option>
+              </select>
+            </div>
+            <span class="field-hint">Workforce activity stratification</span>
+          </div>
+
+          <!-- Resting Heart Rate -->
+          <div class="form-group">
+            <label for="heart_rate">
+              <span>Resting Heart Rate</span>
+              <span class="unit-badge">bpm</span>
+            </label>
+            <div class="input-wrap">
+              <i class="fa-solid fa-wave-square input-icon"></i>
+              <input type="number" id="heart_rate" name="heart_rate" min="40" max="160" value="74" required placeholder="e.g. 74">
+            </div>
+            <span class="field-hint">Normal resting rate: 60–100 bpm</span>
+          </div>
+        </div>
+
+        <!-- Slide Footer Actions -->
+        <div class="slide-footer">
+          <div></div>
+          <button type="button" class="btn btn-primary btn-next" data-next="2">
+            <span>Continue to Vitals & Labs</span>
+            <i class="fa-solid fa-arrow-right"></i>
+          </button>
+        </div>
+      </section>
+
+      <!-- SLIDE 2: Clinical Vitals & Lab Biomarkers -->
+      <section class="slide-pane" id="slide-2" data-slide="2">
+        <div class="slide-header">
+          <div class="slide-icon-box"><i class="fa-solid fa-flask-vial"></i></div>
+          <div>
+            <h2>Clinical Vitals & Laboratory Biomarkers</h2>
+            <p>Input laboratory blood serum and hemodynamic measurements from patient test reports.</p>
+          </div>
+        </div>
+
+        <div class="form-grid">
+          <!-- Blood Pressure: Systolic -->
+          <div class="form-group">
+            <label for="systolic_bp">
+              <span>Systolic Blood Pressure</span>
+              <span class="unit-badge">mmHg</span>
+            </label>
+            <div class="input-wrap">
+              <i class="fa-solid fa-gauge-high input-icon"></i>
+              <input type="number" id="systolic_bp" name="systolic_bp" min="80" max="230" value="128" required placeholder="e.g. 128">
+            </div>
+            <span class="field-hint">Normal: &lt; 120 mmHg | Stage 1: 130–139</span>
+          </div>
+
+          <!-- Blood Pressure: Diastolic -->
+          <div class="form-group">
+            <label for="diastolic_bp">
+              <span>Diastolic Blood Pressure</span>
+              <span class="unit-badge">mmHg</span>
+            </label>
+            <div class="input-wrap">
+              <i class="fa-solid fa-gauge input-icon"></i>
+              <input type="number" id="diastolic_bp" name="diastolic_bp" min="50" max="140" value="82" required placeholder="e.g. 82">
+            </div>
+            <span class="field-hint">Normal: &lt; 80 mmHg | Elevated: 80–89</span>
+          </div>
+
+          <!-- Fasting Blood Glucose -->
+          <div class="form-group">
+            <label for="glucose">
+              <span>Fasting Blood Glucose</span>
+              <span class="unit-badge">mg/dL</span>
+            </label>
+            <div class="input-wrap">
+              <i class="fa-solid fa-cubes-stacked input-icon"></i>
+              <input type="number" id="glucose" name="glucose" min="50" max="400" value="108" required placeholder="e.g. 108">
+            </div>
+            <span class="field-hint">Normal: 70–99 | Impaired: 100–125 | Diabetes: ≥126</span>
+          </div>
+
+          <!-- Glycated Hemoglobin (HbA1c) -->
+          <div class="form-group">
+            <label for="HbA1c_level">
+              <span>Glycated Hemoglobin (HbA1c)</span>
+              <span class="unit-badge">%</span>
+            </label>
+            <div class="input-wrap">
+              <i class="fa-solid fa-percent input-icon"></i>
+              <input type="number" step="0.1" id="HbA1c_level" name="HbA1c_level" min="3.5" max="15.0" value="5.8" required placeholder="e.g. 5.8">
+            </div>
+            <span class="field-hint">Normal: &lt; 5.7% | Prediabetes: 5.7–6.4% | Diabetic: ≥ 6.5%</span>
+          </div>
+
+          <!-- Total Cholesterol -->
+          <div class="form-group">
+            <label for="cholesterol">
+              <span>Total Serum Cholesterol</span>
+              <span class="unit-badge">mg/dL</span>
+            </label>
+            <div class="input-wrap">
+              <i class="fa-solid fa-droplet-slash input-icon"></i>
+              <input type="number" id="cholesterol" name="cholesterol" min="100" max="450" value="218" required placeholder="e.g. 218">
+            </div>
+            <span class="field-hint">Desirable: &lt; 200 mg/dL | Borderline: 200–239</span>
+          </div>
+
+          <!-- Triglycerides -->
+          <div class="form-group">
+            <label for="triglycerides">
+              <span>Serum Triglycerides</span>
+              <span class="unit-badge">mg/dL</span>
+            </label>
+            <div class="input-wrap">
+              <i class="fa-solid fa-fire-flame-simple input-icon"></i>
+              <input type="number" id="triglycerides" name="triglycerides" min="50" max="600" value="165" required placeholder="e.g. 165">
+            </div>
+            <span class="field-hint">Normal: &lt; 150 mg/dL | High: ≥ 200 mg/dL</span>
+          </div>
+
+          <!-- HDL Cholesterol -->
+          <div class="form-group">
+            <label for="hdl">
+              <span>HDL ("Good") Cholesterol</span>
+              <span class="unit-badge">mg/dL</span>
+            </label>
+            <div class="input-wrap">
+              <i class="fa-solid fa-shield-heart input-icon"></i>
+              <input type="number" id="hdl" name="hdl" min="15" max="120" value="50" required placeholder="e.g. 50">
+            </div>
+            <span class="field-hint">Protective: ≥ 60 mg/dL | Low Risk factor: &lt; 40–50</span>
+          </div>
+
+          <!-- LDL Cholesterol -->
+          <div class="form-group">
+            <label for="ldl">
+              <span>LDL ("Bad") Cholesterol</span>
+              <span class="unit-badge">mg/dL</span>
+            </label>
+            <div class="input-wrap">
+              <i class="fa-solid fa-triangle-exclamation input-icon"></i>
+              <input type="number" id="ldl" name="ldl" min="40" max="300" value="132" required placeholder="e.g. 132">
+            </div>
+            <span class="field-hint">Optimal: &lt; 100 mg/dL | Borderline High: 130–159</span>
+          </div>
+
+          <!-- C-Reactive Protein (CRP) -->
+          <div class="form-group">
+            <label for="crp_level">
+              <span>C-Reactive Protein (CRP)</span>
+              <span class="unit-badge">mg/L</span>
+            </label>
+            <div class="input-wrap">
+              <i class="fa-solid fa-fire-burner input-icon"></i>
+              <input type="number" step="0.1" id="crp_level" name="crp_level" min="0.1" max="25" value="4.2" required placeholder="e.g. 4.2">
+            </div>
+            <span class="field-hint">Systemic inflammation: Low &lt; 1.0 | High &gt; 3.0</span>
+          </div>
+
+          <!-- Homocysteine Level -->
+          <div class="form-group">
+            <label for="homocysteine_level">
+              <span>Homocysteine Level</span>
+              <span class="unit-badge">µmol/L</span>
+            </label>
+            <div class="input-wrap">
+              <i class="fa-solid fa-vial input-icon"></i>
+              <input type="number" step="0.1" id="homocysteine_level" name="homocysteine_level" min="3" max="40" value="12.4" required placeholder="e.g. 12.4">
+            </div>
+            <span class="field-hint">Vascular/renal injury risk marker: Normal &lt; 12.0</span>
+          </div>
+        </div>
+
+        <div class="slide-footer">
+          <button type="button" class="btn btn-secondary btn-prev" data-prev="1">
+            <i class="fa-solid fa-arrow-left"></i>
+            <span>Back</span>
+          </button>
+          <button type="button" class="btn btn-primary btn-next" data-next="3">
+            <span>Continue to Lifestyle Factors</span>
+            <i class="fa-solid fa-arrow-right"></i>
+          </button>
+        </div>
+      </section>
+
+      <!-- SLIDE 3: Lifestyle Factors & Medical History -->
+      <section class="slide-pane" id="slide-3" data-slide="3">
+        <div class="slide-header">
+          <div class="slide-icon-box"><i class="fa-solid fa-person-walking"></i></div>
+          <div>
+            <h2>Lifestyle Factors & Medical History</h2>
+            <p>Configure daily behavioral toggles, diet patterns, and hereditary health predispositions.</p>
+          </div>
+        </div>
+
+        <div class="toggles-grid">
+          <!-- Toggle: Smoking Habit -->
+          <div class="toggle-card">
+            <div class="toggle-card-content">
+              <div class="toggle-icon-wrap"><i class="fa-solid fa-smoking"></i></div>
+              <div class="toggle-text">
+                <h3>Tobacco Smoking</h3>
+                <p>Any current or former history of cigarette or tobacco smoking.</p>
+              </div>
+            </div>
+            <div class="toggle-control-group">
+              <label class="switch">
+                <input type="checkbox" id="toggle-smoking">
+                <span class="slider round"></span>
+              </label>
+              <div id="smoking-detail" class="toggle-subselect hidden">
+                <select id="smoking_type" name="smoking">
+                  <option value="Never">Never Smoked</option>
+                  <option value="Former">Former Smoker</option>
+                  <option value="Current" selected>Current Active Smoker</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <!-- Toggle: Alcohol Consumption -->
+          <div class="toggle-card">
+            <div class="toggle-card-content">
+              <div class="toggle-icon-wrap"><i class="fa-solid fa-wine-glass"></i></div>
+              <div class="toggle-text">
+                <h3>Alcohol Consumption</h3>
+                <p>Regular consumption of alcoholic beverages (units per week).</p>
+              </div>
+            </div>
+            <div class="toggle-control-group">
+              <label class="switch">
+                <input type="checkbox" id="toggle-alcohol" checked>
+                <span class="slider round"></span>
+              </label>
+              <div class="slider-val-box">
+                <input type="range" id="alcohol_intake" name="alcohol_intake" min="0" max="30" value="6" step="1">
+                <span id="alcohol_display" class="range-display">6 drinks/wk</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Toggle: Physical Activity / Exercise -->
+          <div class="toggle-card">
+            <div class="toggle-card-content">
+              <div class="toggle-icon-wrap"><i class="fa-solid fa-dumbbell"></i></div>
+              <div class="toggle-text">
+                <h3>Regular Physical Exercise</h3>
+                <p>Meeting WHO guideline of 150+ mins/week of moderate activity.</p>
+              </div>
+            </div>
+            <div class="toggle-control-group">
+              <label class="switch">
+                <input type="checkbox" id="toggle-activity" checked>
+                <span class="slider round"></span>
+              </label>
+              <div class="toggle-subselect">
+                <select id="physical_activity" name="physical_activity">
+                  <option value="Low">Low / Sedentary</option>
+                  <option value="Moderate" selected>Moderate (2-3x/week)</option>
+                  <option value="High">High (Athletic / Daily)</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <!-- Toggle: Family Medical History -->
+          <div class="toggle-card">
+            <div class="toggle-card-content">
+              <div class="toggle-icon-wrap"><i class="fa-solid fa-dna"></i></div>
+              <div class="toggle-text">
+                <h3>Family History of Disease</h3>
+                <p>First-degree relative with Diabetes, Hypertension, or CAD.</p>
+              </div>
+            </div>
+            <div class="toggle-control-group">
+              <label class="switch">
+                <input type="checkbox" id="toggle-family">
+                <span class="slider round"></span>
+              </label>
+              <input type="hidden" id="family_history" name="family_history" value="No">
+            </div>
+          </div>
+        </div>
+
+        <!-- Additional Lifestyle Metrics Grid -->
+        <div class="form-grid secondary-grid">
+          <!-- Sleep Hours -->
+          <div class="form-group">
+            <label for="sleep_hours">
+              <span>Nightly Sleep Duration</span>
+              <span class="unit-badge">Hours</span>
+            </label>
+            <div class="input-wrap">
+              <i class="fa-solid fa-bed input-icon"></i>
+              <input type="number" step="0.5" id="sleep_hours" name="sleep_hours" min="3" max="14" value="7.0" required>
+            </div>
+            <span class="field-hint">Recommended restorative sleep: 7–9 hrs</span>
+          </div>
+
+          <!-- Stress Level Selection -->
+          <div class="form-group">
+            <label for="stress_level">
+              <span>Perceived Chronic Stress</span>
+              <span class="unit-badge">Allostatic Load</span>
+            </label>
+            <div class="input-wrap">
+              <i class="fa-solid fa-brain input-icon"></i>
+              <select id="stress_level" name="stress_level">
+                <option value="Low">Low (Well-managed)</option>
+                <option value="Medium" selected>Medium (Periodic)</option>
+                <option value="High">High (Chronic)</option>
+              </select>
+            </div>
+            <span class="field-hint">Elevates cortisol, BP, and insulin resistance</span>
+          </div>
+
+          <!-- Sugar Consumption -->
+          <div class="form-group">
+            <label for="sugar_consumption">
+              <span>Dietary Sugar Intake</span>
+              <span class="unit-badge">Dietary</span>
+            </label>
+            <div class="input-wrap">
+              <i class="fa-solid fa-candy-cane input-icon"></i>
+              <select id="sugar_consumption" name="sugar_consumption">
+                <option value="Low">Low / Ketogenic / Whole Food</option>
+                <option value="Medium" selected>Medium / Typical Western</option>
+                <option value="High">High (Frequent Sodas & Sweets)</option>
+              </select>
+            </div>
+            <span class="field-hint">Drives hepatic lipid deposition & HbA1c</span>
+          </div>
+
+          <!-- Salt Intake -->
+          <div class="form-group">
+            <label for="salt_intake">
+              <span>Estimated Sodium/Salt Intake</span>
+              <span class="unit-badge">g/day</span>
+            </label>
+            <div class="input-wrap">
+              <i class="fa-solid fa-mortar-pestle input-icon"></i>
+              <input type="number" step="0.5" id="salt_intake" name="salt_intake" min="1" max="25" value="6.5" required>
+            </div>
+            <span class="field-hint">AHA guideline: &lt; 5.0 g/day of salt</span>
+          </div>
+        </div>
+
+        <div class="slide-footer">
+          <button type="button" class="btn btn-secondary btn-prev" data-prev="2">
+            <i class="fa-solid fa-arrow-left"></i>
+            <span>Back</span>
+          </button>
+          <button type="submit" id="btn-predict" class="btn btn-accent btn-pulse">
+            <i class="fa-solid fa-wand-magic-sparkles"></i>
+            <span>Run Stacked Ensemble Prediction</span>
+          </button>
+        </div>
+      </section>
+
+      <!-- SLIDE 4: Prediction Results & Confidence Scores -->
+      <section class="slide-pane" id="slide-4" data-slide="4">
+        <div class="results-header-banner" id="results-banner">
+          <div class="banner-left">
+            <div class="pulse-status-ring" id="status-ring">
+              <i class="fa-solid fa-heart-pulse"></i>
+            </div>
+            <div>
+              <div class="banner-tag">STACKED ENSEMBLE CLINICAL OUTPUT</div>
+              <h2 id="overall-status-text">Processing Clinical Prediction...</h2>
+              <p id="overall-status-sub">Evaluating 5 Boosting Algorithms + Random Forest Meta-Learner</p>
+            </div>
+          </div>
+          <div class="banner-right">
+            <div class="meta-score-box">
+              <span class="score-label">Stacked Ensemble Confidence</span>
+              <div class="score-num-wrap">
+                <span class="score-num" id="stacked-score">--%</span>
+              </div>
+              <span class="score-desc" id="stacked-meta-type">Random Forest Meta-Learner</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Boosting Models Probability Matrix Bar -->
+        <div class="boosting-matrix-card">
+          <div class="matrix-header">
+            <h3><i class="fa-solid fa-layer-group"></i> Base Boosting Algorithm Probability Matrix</h3>
+            <span class="matrix-badge">Independently Trained Learners</span>
+          </div>
+          <div class="boosting-bars-grid">
+            <div class="boosting-bar-item">
+              <div class="bar-header">
+                <span class="algo-name"><i class="fa-solid fa-bolt"></i> XGBoost</span>
+                <span class="algo-val" id="val-xgb">--%</span>
+              </div>
+              <div class="algo-track"><div class="algo-fill fill-xgb" id="fill-xgb" style="width: 0%"></div></div>
+            </div>
+
+            <div class="boosting-bar-item">
+              <div class="bar-header">
+                <span class="algo-name"><i class="fa-solid fa-feather"></i> LightGBM</span>
+                <span class="algo-val" id="val-lgb">--%</span>
+              </div>
+              <div class="algo-track"><div class="algo-fill fill-lgb" id="fill-lgb" style="width: 0%"></div></div>
+            </div>
+
+            <div class="boosting-bar-item">
+              <div class="bar-header">
+                <span class="algo-name"><i class="fa-solid fa-cat"></i> CatBoost</span>
+                <span class="algo-val" id="val-cat">--%</span>
+              </div>
+              <div class="algo-track"><div class="algo-fill fill-cat" id="fill-cat" style="width: 0%"></div></div>
+            </div>
+
+            <div class="boosting-bar-item">
+              <div class="bar-header">
+                <span class="algo-name"><i class="fa-solid fa-chart-line"></i> GradientBoost</span>
+                <span class="algo-val" id="val-gb">--%</span>
+              </div>
+              <div class="algo-track"><div class="algo-fill fill-gb" id="fill-gb" style="width: 0%"></div></div>
+            </div>
+
+            <div class="boosting-bar-item">
+              <div class="bar-header">
+                <span class="algo-name"><i class="fa-solid fa-circle-nodes"></i> AdaBoost</span>
+                <span class="algo-val" id="val-ada">--%</span>
+              </div>
+              <div class="algo-track"><div class="algo-fill fill-ada" id="fill-ada" style="width: 0%"></div></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 10 Predicted Diseases Section -->
+        <div class="diseases-section">
+          <div class="diseases-header">
+            <h3><i class="fa-solid fa-microscope"></i> Multi-Disease Predictions & Individual Confidence Scores</h3>
+            <span class="badge-count" id="positive-count">0 Diseases Flagged</span>
+          </div>
+
+          <div class="disease-cards-grid" id="disease-cards-container">
+            <!-- Cards rendered dynamically by app.js -->
+            <div class="loading-state">
+              <i class="fa-solid fa-circle-notch fa-spin fa-2x"></i>
+              <p>Analyzing patient vector through 5 boosting models + meta learner...</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Clinical Recommendations & Patient Summary -->
+        <div class="recommendations-section">
+          <div class="rec-card">
+            <h3><i class="fa-solid fa-notes-medical"></i> Evidence-Based Preventive Actions & Lifestyle Guidance</h3>
+            <ul id="recommendations-list" class="rec-list">
+              <li>Awaiting model execution...</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="slide-footer results-footer">
+          <button type="button" class="btn btn-secondary" id="btn-restart">
+            <i class="fa-solid fa-rotate-left"></i>
+            <span>New Patient Evaluation</span>
+          </button>
+          <button type="button" class="btn btn-primary" id="btn-view-metrics-from-results">
+            <i class="fa-solid fa-chart-line"></i>
+            <span>Inspect Model Evaluation & Overfitting Metrics</span>
+          </button>
+        </div>
+      </section>
+
+    </form>
+  </main>
+
+  <!-- MODAL: MODEL EVALUATION METRICS, CONFUSION MATRIX & OVERFITTING DIAGNOSTICS -->
+  <div class="modal-backdrop hidden" id="diagnostics-modal">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <div class="modal-title-group">
+          <div class="modal-icon"><i class="fa-solid fa-chart-pie"></i></div>
+          <div>
+            <h2>Model Evaluation & Overfitting Diagnostics</h2>
+            <p>Fine-tuned Stacked Ensemble (XGBoost, LightGBM, CatBoost, GradientBoosting, AdaBoost → Random Forest Meta-Learner)</p>
+          </div>
+        </div>
+        <button type="button" class="btn-close" id="btn-close-diagnostics" aria-label="Close modal">&times;</button>
+      </div>
+
+      <div class="modal-body">
+        <!-- Overfitting / Underfitting Status Alert Banner -->
+        <div class="overfit-alert-banner" id="overfit-banner">
+          <div class="alert-icon-box" id="overfit-icon-box">
+            <i class="fa-solid fa-shield-check"></i>
+          </div>
+          <div class="alert-content">
+            <div class="alert-status" id="overfit-status-text">Optimal Generalization (No Overfitting)</div>
+            <p id="overfit-desc-text">Discrepancy between training and test sets is minimal, confirming robust generalization.</p>
+            <div class="alert-metrics-row">
+              <span><strong>Train Accuracy:</strong> <span id="metric-train-acc">--%</span></span>
+              <span><strong>Test Accuracy:</strong> <span id="metric-test-acc">--%</span></span>
+              <span><strong>Generalization Gap:</strong> <span id="metric-gap">--%</span></span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 4 Key Primary Metrics Cards -->
+        <div class="metrics-kpi-grid">
+          <div class="kpi-card">
+            <div class="kpi-icon"><i class="fa-solid fa-bullseye"></i></div>
+            <div class="kpi-info">
+              <span class="kpi-title">Accuracy</span>
+              <span class="kpi-val" id="kpi-accuracy">--%</span>
+              <span class="kpi-sub">Overall correct classifications</span>
+            </div>
+          </div>
+
+          <div class="kpi-card">
+            <div class="kpi-icon"><i class="fa-solid fa-crosshairs"></i></div>
+            <div class="kpi-info">
+              <span class="kpi-title">Precision</span>
+              <span class="kpi-val" id="kpi-precision">--%</span>
+              <span class="kpi-sub">Positive predictive value</span>
+            </div>
+          </div>
+
+          <div class="kpi-card">
+            <div class="kpi-icon"><i class="fa-solid fa-radar"></i></div>
+            <div class="kpi-info">
+              <span class="kpi-title">Recall (Sensitivity)</span>
+              <span class="kpi-val" id="kpi-recall">--%</span>
+              <span class="kpi-sub">True disease detection rate</span>
+            </div>
+          </div>
+
+          <div class="kpi-card">
+            <div class="kpi-icon"><i class="fa-solid fa-scale-balanced"></i></div>
+            <div class="kpi-info">
+              <span class="kpi-title">F1-Score</span>
+              <span class="kpi-val" id="kpi-f1">--%</span>
+              <span class="kpi-sub">Harmonic precision-recall mean</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Confusion Matrix & Base Boosting Algorithms Comparison -->
+        <div class="diagnostics-split">
+          <!-- Confusion Matrix Heatmap -->
+          <div class="diag-card cm-card">
+            <div class="card-head">
+              <h3><i class="fa-solid fa-table-cells"></i> Evaluation Confusion Matrix</h3>
+              <span class="badge-tag">Test Holdout Set</span>
+            </div>
+            <p class="cm-desc">Shows True Negatives, False Positives, False Negatives, and True Positives on unseen patient test samples.</p>
+            
+            <div class="cm-table-wrap">
+              <div class="cm-axis-y">Actual Positive / Negative</div>
+              <div class="cm-matrix">
+                <div class="cm-cell cm-tn">
+                  <span class="cm-label">True Negative (TN)</span>
+                  <span class="cm-val" id="cm-tn">0</span>
+                  <span class="cm-pct" id="cm-tn-pct">0%</span>
+                  <span class="cm-note">Correctly identified healthy</span>
+                </div>
+                <div class="cm-cell cm-fp">
+                  <span class="cm-label">False Positive (FP)</span>
+                  <span class="cm-val" id="cm-fp">0</span>
+                  <span class="cm-pct" id="cm-fp-pct">0%</span>
+                  <span class="cm-note">Healthy flagged as at-risk</span>
+                </div>
+                <div class="cm-cell cm-fn">
+                  <span class="cm-label">False Negative (FN)</span>
+                  <span class="cm-val" id="cm-fn">0</span>
+                  <span class="cm-pct" id="cm-fn-pct">0%</span>
+                  <span class="cm-note">Diseased cases missed</span>
+                </div>
+                <div class="cm-cell cm-tp">
+                  <span class="cm-label">True Positive (TP)</span>
+                  <span class="cm-val" id="cm-tp">0</span>
+                  <span class="cm-pct" id="cm-tp-pct">0%</span>
+                  <span class="cm-note">Accurately detected diseases</span>
+                </div>
+              </div>
+              <div class="cm-axis-x">Predicted Condition Negative / Positive</div>
+            </div>
+          </div>
+
+          <!-- Base Boosting Models Comparison Table -->
+          <div class="diag-card algos-card">
+            <div class="card-head">
+              <h3><i class="fa-solid fa-ranking-star"></i> Individual Boosting Model Benchmarks</h3>
+              <span class="badge-tag">Pre-Meta Learner</span>
+            </div>
+            <div class="table-responsive">
+              <table class="algo-table">
+                <thead>
+                  <tr>
+                    <th>Model</th>
+                    <th>Train Acc</th>
+                    <th>Test Acc</th>
+                    <th>F1</th>
+                    <th>Gap (Overfit)</th>
+                  </tr>
+                </thead>
+                <tbody id="boosting-table-body">
+                  <tr><td colspan="5">Loading boosting model metrics...</td></tr>
+                </tbody>
+              </table>
+            </div>
+
+            <!-- Fine-Tuning Console -->
+            <div class="finetune-box">
+              <h4><i class="fa-solid fa-sliders"></i> Interactive Model Fine-Tuning</h4>
+              <p class="finetune-desc">Adjust dataset training capacity to observe the effect on overfitting and accuracy.</p>
+              <div class="finetune-controls">
+                <div class="ft-field">
+                  <label for="ft-sample">Sample Size:</label>
+                  <select id="ft-sample">
+                    <option value="25000">25,000 records (Fast)</option>
+                    <option value="40000" selected>40,000 records (Balanced)</option>
+                    <option value="70000">70,000 records (High Capacity)</option>
+                  </select>
+                </div>
+                <button type="button" id="btn-run-finetune" class="btn btn-sm btn-outline">
+                  <i class="fa-solid fa-arrows-rotate"></i> Re-Train & Fine-Tune
+                </button>
+              </div>
+              <div id="finetune-status" class="finetune-status-msg hidden"></div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: BMI CALCULATOR QUICK HELPER -->
+  <div class="modal-backdrop hidden" id="bmi-modal">
+    <div class="modal-dialog modal-dialog-sm">
+      <div class="modal-header">
+        <div class="modal-title-group">
+          <div class="modal-icon"><i class="fa-solid fa-calculator"></i></div>
+          <div>
+            <h3>Body Mass Index (BMI) Calculator</h3>
+            <p>Compute BMI from height and weight</p>
+          </div>
+        </div>
+        <button type="button" class="btn-close" id="btn-close-bmi">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label for="bmi-height">Height (cm)</label>
+          <input type="number" id="bmi-height" value="175" placeholder="e.g. 175">
+        </div>
+        <div class="form-group">
+          <label for="bmi-weight">Weight (kg)</label>
+          <input type="number" id="bmi-weight" value="78" placeholder="e.g. 78">
+        </div>
+        <div class="bmi-calc-result">
+          <span>Calculated BMI:</span>
+          <strong id="bmi-calc-val">25.5 kg/m²</strong>
+        </div>
+        <div class="slide-footer modal-footer-actions">
+          <button type="button" class="btn btn-secondary" id="btn-cancel-bmi">Cancel</button>
+          <button type="button" class="btn btn-primary" id="btn-apply-bmi">Apply to Form</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification Container -->
+  <div id="toast" class="toast hidden"></div>
+
+  <script src="js/model_bundle.js"></script>
+  <script src="js/client_engine.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,26 @@
+{
+  "name": "mega-disease-prediction-model",
+  "version": "1.0.0",
+  "description": "Multi-Step Medical Prediction App using Node.js and a Stacked Ensemble (XGBoost, LightGBM, CatBoost, GradientBoosting, AdaBoost -> Random Forest Meta-Learner)",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "keywords": [
+    "disease-prediction",
+    "ensemble-learning",
+    "xgboost",
+    "lightgbm",
+    "catboost",
+    "nodejs",
+    "healthcare-ai"
+  ],
+  "author": "Antigravity AI",
+  "license": "MIT",
+  "dependencies": {
+    "body-parser": "^1.20.2",
+    "cors": "^2.8.5",
+    "express": "^4.19.2"
+  }
+}
