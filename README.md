@@ -338,12 +338,10 @@ MIT License - see LICENSE file for details
 
 ---
 
-## 🙏 Acknowledgments
+## Acknowledgments
 
 - Dataset: Multi-disease patient dataset (281K records)
 - Algorithms: XGBoost, LightGBM, CatBoost, scikit-learn
 - Deployment: Netlify Drop
 
----
 
-**Built with ❤️ for clinical AI research**
