@@ -24,7 +24,7 @@ flowchart TD
     B --> B4[GradientBoosting]
     B --> B5[AdaBoost]
     
-    B1 --> C[Probability Vector<br/>[p1, p2, p3, p4, p5]]
+    B1 --> C["Probability Vector<br/>(p1, p2, p3, p4, p5)"]
     B2 --> C
     B3 --> C
     B4 --> C
